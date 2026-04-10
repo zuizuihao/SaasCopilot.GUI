@@ -2,9 +2,35 @@ name: Build And Test
 
 on:
   pull_request:
+    paths:
+      - .github/workflows/build-test.yml
+      - Directory.Build.props
+      - Directory.Build.targets
+      - Directory.Packages.props
+      - SaasCopilot.slnx
+      - SaasCopilot.GUI.Blazor/**
+      - SaasCopilot.GUI.Core/**
+      - SaasCopilot.GUI.Core.Test/**
+      - SaasCopilot.GUI.WinForms/**
+      - SaasCopilot.GUI.WinForms.Test/**
+      - SaasCopilot.GUI.WinForms.TestHost/**
+      - SaasCopilot.Service/**
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/build-test.yml
+      - Directory.Build.props
+      - Directory.Build.targets
+      - Directory.Packages.props
+      - SaasCopilot.slnx
+      - SaasCopilot.GUI.Blazor/**
+      - SaasCopilot.GUI.Core/**
+      - SaasCopilot.GUI.Core.Test/**
+      - SaasCopilot.GUI.WinForms/**
+      - SaasCopilot.GUI.WinForms.Test/**
+      - SaasCopilot.GUI.WinForms.TestHost/**
+      - SaasCopilot.Service/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
