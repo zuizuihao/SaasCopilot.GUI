@@ -56,13 +56,10 @@ jobs:
         run: dotnet restore SaasCopilot.slnx
 
       - name: Build solution
-        run: dotnet build SaasCopilot.slnx --configuration Release --no-restore -p:ContinuousIntegrationBuild=true -p:GeneratePackageOnBuild=false -p:Version=${{ steps.build_version.outputs.package_version }}
+        run: dotnet build SaasCopilot.slnx --configuration Release --no-restore -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.build_version.outputs.package_version }}
 
       - name: Run core test suite
         run: dotnet test SaasCopilot.GUI.Core.Test/SaasCopilot.GUI.Core.Test.csproj --configuration Release --no-build
-
-      - name: Pack WinForms package
-        run: dotnet pack SaasCopilot.GUI.WinForms/SaasCopilot.GUI.WinForms.csproj --configuration Release --no-build --no-restore -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.build_version.outputs.package_version }}
 
       - name: Create GitHub release
         if: github.event_name == 'workflow_dispatch'
