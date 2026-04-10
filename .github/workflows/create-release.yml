@@ -61,25 +61,10 @@ jobs:
       - name: Run core test suite
         run: dotnet test SaasCopilot.GUI.Core.Test/SaasCopilot.GUI.Core.Test.csproj --configuration Release --no-build
 
-      - name: Pack WinForms package
-        run: dotnet pack SaasCopilot.GUI.WinForms/SaasCopilot.GUI.WinForms.csproj --configuration Release -p:ContinuousIntegrationBuild=true -p:PackageVersion=${{ steps.build_version.outputs.package_version }}
-
-      - name: Create GitHub release
-        if: github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.build_version.outputs.release_tag }}
-          target_commitish: ${{ github.sha }}
-          generate_release_notes: true
-          fail_on_unmatched_files: true
-          files: |
-            Bin/SaasCopilot.GUI.WinForms/*.nupkg
-            Bin/SaasCopilot.GUI.WinForms/*.snupkg
-
       - name: Publish to NuGet
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          dotnet nuget push "Bin/SaasCopilot.GUI.WinForms/*.nupkg" --api-key "$env:NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
-          dotnet nuget push "Bin/SaasCopilot.GUI.WinForms/*.snupkg" --api-key "$env:NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push "Bin/SaasCopilot.GUI.WinForms/SaasCopilot.GUI.WinForms.${{ steps.build_version.outputs.package_version }}.nupkg" --api-key "$env:NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push "Bin/SaasCopilot.GUI.WinForms/SaasCopilot.GUI.WinForms.${{ steps.build_version.outputs.package_version }}.snupkg" --api-key "$env:NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
