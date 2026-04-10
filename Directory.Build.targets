@@ -1,0 +1,19 @@
+<Project>
+
+  <PropertyGroup Condition="'$(IsPackable)' == 'true'">
+    <IsLocalBuild Condition="'$(CI)' == '' and '$(TF_BUILD)' == '' and '$(GITHUB_ACTIONS)' == ''">true</IsLocalBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(GeneratePackageOnBuild)' == 'true' and '$(IsLocalBuild)' == 'true' and '$(PackageVersion)' == ''">
+    <LocalPackageStamp Condition="'$(LocalPackageStamp)' == ''">$([System.DateTime]::Now.ToString('yyyyMMddHHmmss'))</LocalPackageStamp>
+    <PackageVersion>$(Version)-local.$(LocalPackageStamp)</PackageVersion>
+  </PropertyGroup>
+
+  <!-- When a project declares multiple TFMs, each TFM must output to its own
+       sub-folder; otherwise parallel builds overwrite each other and project
+       references pick up the wrong assembly (CS1705 / CS2012). -->
+  <PropertyGroup Condition="'$(TargetFrameworks)' != ''">
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+</Project>

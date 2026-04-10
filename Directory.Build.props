@@ -1,0 +1,18 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Language -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Diagnostics -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Output -->
+    <OutputPath>..\Bin\$(MSBuildProjectName)</OutputPath>
+
+  </PropertyGroup>
+
+</Project>

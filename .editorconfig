@@ -1,0 +1,15 @@
+root = true
+
+[*.cs]
+# Missing XML docs on public APIs. Suppressed for now; can be fixed later.
+dotnet_diagnostic.CS1591.severity = none
+# Logging template placeholder casing. Low priority for now.
+dotnet_diagnostic.CA1727.severity = none
+# Prefer LoggerMessage patterns. Useful, but too noisy right now.
+dotnet_diagnostic.CA1848.severity = none
+# Performance suggestion about concrete return types. Defer until later cleanup.
+dotnet_diagnostic.CA1859.severity = none
+# Prefer char overloads for string APIs. Minor cleanup, not urgent.
+dotnet_diagnostic.CA1865.severity = none
+# Avoid expensive log arguments when logging is disabled. Defer for later.
+dotnet_diagnostic.CA1873.severity = none

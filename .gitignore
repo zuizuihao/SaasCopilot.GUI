@@ -1,0 +1,75 @@
+# .gitignore for Blazor Web/Server projects
+# Build and publish folders
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+*.sln.iml
+
+# ASP.NET secrets
+secrets.json
+
+# Logs
+*.log
+
+# NuGet packages
+*.nupkg
+# NuGet restore
+.nuget/
+
+# Visual Studio
+*.vs/
+
+# IIS Express
+/.vs/
+/.vscode/
+/.idea/
+
+# Others
+*.dbmdl
+*.dbproj
+*.pdb
+*.cache
+*.config
+*.pidb
+*.svclog
+*.scc
+*.psess
+*.vspx
+*.vspscc
+*.vssscc
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+
+# Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# DotCover
+*.dotCover
+
+# Test results
+TestResults/
+
+# Publish Web Output
+wwwroot/dist/
+
+# Node modules (if using npm/yarn for frontend)
+node_modules/
+
+# Environment files
+.env
+.env.*

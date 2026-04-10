@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- Cross-platform Blazor components; no Windows dependency -->
+    <TargetFramework>net10.0</TargetFramework>
+
+    <!-- NuGet package -->
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageId>SaasCopilot.GUI.Blazor</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>SaasCopilot</Authors>
+    <Description>Blazor component library for the SaasCopilot AI copilot panel. Provides the same chat UI, mode selector, transcript view, and settings as SaasCopilot.GUI.WinForms but as reusable Razor components suitable for Blazor Server, Blazor WebAssembly, or .NET MAUI Blazor Hybrid.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SaasCopilot.GUI.Core\SaasCopilot.GUI.Core.csproj" />
+  </ItemGroup>
+
+</Project>

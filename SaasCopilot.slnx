@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="SaasCopilot.GUI.Blazor/SaasCopilot.GUI.Blazor.csproj" />
+  <Project Path="SaasCopilot.GUI.Core/SaasCopilot.GUI.Core.csproj" />
+  <Project Path="SaasCopilot.GUI.Core.Test/SaasCopilot.GUI.Core.Test.csproj" />
+  <Project Path="SaasCopilot.GUI.WinForms/SaasCopilot.GUI.WinForms.csproj" />
+  <Project Path="SaasCopilot.GUI.WinForms.Test/SaasCopilot.GUI.WinForms.Test.csproj" />
+  <Project Path="SaasCopilot.GUI.WinForms.TestHost/SaasCopilot.GUI.WinForms.TestHost.csproj" />
+</Solution>
