@@ -1,0 +1,62 @@
+name: Build And Test
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/build-test.yml
+      - Directory.Build.props
+      - Directory.Build.targets
+      - Directory.Packages.props
+      - SaasCopilot.slnx
+      - SaasCopilot.GUI.Blazor/**
+      - SaasCopilot.GUI.Core/**
+      - SaasCopilot.GUI.Core.Test/**
+      - SaasCopilot.GUI.WinForms/**
+      - SaasCopilot.GUI.WinForms.Test/**
+      - SaasCopilot.GUI.WinForms.TestHost/**
+      - SaasCopilot.Service/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-test.yml
+      - Directory.Build.props
+      - Directory.Build.targets
+      - Directory.Packages.props
+      - SaasCopilot.slnx
+      - SaasCopilot.GUI.Blazor/**
+      - SaasCopilot.GUI.Core/**
+      - SaasCopilot.GUI.Core.Test/**
+      - SaasCopilot.GUI.WinForms/**
+      - SaasCopilot.GUI.WinForms.Test/**
+      - SaasCopilot.GUI.WinForms.TestHost/**
+      - SaasCopilot.Service/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore solution
+        run: dotnet restore SaasCopilot.slnx
+
+      - name: Build solution
+        run: dotnet build SaasCopilot.slnx --configuration Release --no-restore -p:ContinuousIntegrationBuild=true -p:GeneratePackageOnBuild=false
+
+      - name: Run core test suite
+        run: dotnet test SaasCopilot.GUI.Core.Test/SaasCopilot.GUI.Core.Test.csproj --configuration Release --no-build

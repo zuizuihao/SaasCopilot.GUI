@@ -1,0 +1,70 @@
+name: Publish WinForms Package
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Release version in SemVer format, for example 1.2.3 or 1.2.3-rc.1
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: write
+
+jobs:
+  build-test-pack:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve build version
+        id: build_version
+        run: |
+          if ("${{ github.event_name }}" -eq 'workflow_dispatch') {
+            $packageVersion = "${{ inputs.release_version }}".Trim()
+
+            if ($packageVersion -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') {
+              throw "Release version must look like 1.2.3 or 1.2.3-rc.1. Received '$packageVersion'."
+            }
+
+            $releaseTag = "v$packageVersion"
+          }
+          else {
+            $base = (dotnet msbuild SaasCopilot.GUI.WinForms/SaasCopilot.GUI.WinForms.csproj -getProperty:PackageVersion).Trim()
+            $packageVersion = "$base-ci.${{ github.run_number }}"
+            $releaseTag = ''
+          }
+
+          "package_version=$packageVersion" >> $env:GITHUB_OUTPUT
+          "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT
+
+      - name: Restore solution
+        run: dotnet restore SaasCopilot.slnx
+
+      - name: Build solution
+        run: dotnet build SaasCopilot.slnx --configuration Release --no-restore -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.build_version.outputs.package_version }}
+
+      - name: Run core test suite
+        run: dotnet test SaasCopilot.GUI.Core.Test/SaasCopilot.GUI.Core.Test.csproj --configuration Release --no-build
+
+      - name: Publish to NuGet
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push "Bin/SaasCopilot.GUI.WinForms/SaasCopilot.GUI.WinForms.${{ steps.build_version.outputs.package_version }}.nupkg" --api-key "$env:NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push "Bin/SaasCopilot.GUI.WinForms/SaasCopilot.GUI.WinForms.${{ steps.build_version.outputs.package_version }}.snupkg" --api-key "$env:NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
