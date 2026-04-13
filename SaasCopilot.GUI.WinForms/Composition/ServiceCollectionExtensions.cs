@@ -22,6 +22,7 @@ namespace SaasCopilot.Copilot.GUI.Composition
 			services.AddSingleton<IMcpApprovalPolicy, McpApprovalPolicy>();
 			services.AddSingleton<IMcpApprovalService, McpApprovalService>();
 			services.AddSingleton<IMcpConnectionManager, McpConnectionManager>();
+			services.AddSingleton<IMcpHubConnection, McpHubConnection>();
 			services.AddSingleton<IBuiltInToolProvider, BuiltInToolProvider>();
 			services.AddSingleton<IBuiltInToolExecutor, BuiltInToolExecutor>();
 			services.AddSingleton<IMcpToolCatalog, McpToolCatalog>();

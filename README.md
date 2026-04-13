@@ -40,7 +40,8 @@ The subsystem is split so the UI layer can evolve independently from the shared 
 
 - .NET 10 SDK/runtime
 - LM Studio running locally on `http://localhost:1234`
-- A SaasCopilot application instance exposing `/mcp` for act mode features
+- A SaasCopilot application instance exposing `/mcp` for act mode tool calling
+- A SaasCopilot application instance exposing `/copilot-hub` (SignalR) for real-time action feedback _(optional — MCP still works without it)_
 - Windows for the WinForms UI package
 
 ## Documentation Map

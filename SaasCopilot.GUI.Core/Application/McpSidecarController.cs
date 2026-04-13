@@ -32,6 +32,8 @@ namespace SaasCopilot.Copilot.GUI.Features.Mcp
 		readonly IMcpLogService logService;
 		readonly ILogger<McpSidecarController> logger;
 		readonly Func<Uri?> activeApplicationUriProvider;
+		readonly IMcpHubConnection hubConnection;
+		readonly SynchronizationContext? synchronizationContext;
 		readonly List<McpTranscriptEntry> transcriptEntries;
 		CancellationTokenSource? currentPromptOperationCts;
 		Uri? lastAutoConnectedEndpoint;
@@ -47,7 +49,8 @@ namespace SaasCopilot.Copilot.GUI.Features.Mcp
 			IMcpApprovalService approvalService,
 			IMcpLogService logService,
 			ILogger<McpSidecarController> logger,
-			Func<Uri?> activeApplicationUriProvider)
+			Func<Uri?> activeApplicationUriProvider,
+			IMcpHubConnection hubConnection)
 		{
 			ArgumentNullException.ThrowIfNull(endpointResolver);
 			ArgumentNullException.ThrowIfNull(configurationStore);
@@ -60,6 +63,7 @@ namespace SaasCopilot.Copilot.GUI.Features.Mcp
 			ArgumentNullException.ThrowIfNull(logService);
 			ArgumentNullException.ThrowIfNull(logger);
 			ArgumentNullException.ThrowIfNull(activeApplicationUriProvider);
+			ArgumentNullException.ThrowIfNull(hubConnection);
 
 			this.endpointResolver = endpointResolver;
 			this.configurationStore = configurationStore;
@@ -72,6 +76,9 @@ namespace SaasCopilot.Copilot.GUI.Features.Mcp
 			this.logService = logService;
 			this.logger = logger;
 			this.activeApplicationUriProvider = activeApplicationUriProvider;
+			this.hubConnection = hubConnection;
+			this.synchronizationContext = SynchronizationContext.Current;
+			hubConnection.ActionReceived += OnHubActionReceived;
 
 			var configuration = configurationStore.Load();
 			IsVisible = configuration.IsVisible;
@@ -144,6 +151,7 @@ namespace SaasCopilot.Copilot.GUI.Features.Mcp
 			if (!visible)
 			{
 				ActivityText = null;
+				_ = hubConnection.StopAsync();
 			}
 			Persist();
 			NotifyStateChanged();
@@ -216,6 +224,7 @@ namespace SaasCopilot.Copilot.GUI.Features.Mcp
 			{
 				AvailableTools = toolCatalog.GetBuiltInTools();
 				SelectedToolName = null;
+				_ = hubConnection.StopAsync();
 			}
 			ResolvedEndpoint = resolution.Endpoint;
 			ResolutionFailureReason = resolution.FailureReason;
@@ -311,6 +320,7 @@ namespace SaasCopilot.Copilot.GUI.Features.Mcp
 				AppendTranscript("system", "Connected", $"Connected to '{ResolvedEndpoint}' and discovered {AvailableTools.Count} tools.");
 				logger.LogInformation("Connected to MCP endpoint {endpoint} with {toolCount} tools", ResolvedEndpoint, AvailableTools.Count);
 				logService.Log("discovery", $"Discovered {AvailableTools.Count} tools from '{ResolvedEndpoint}'.");
+				_ = StartHubAsync(ResolvedEndpoint);
 			}
 			catch (HttpRequestException ex)
 			{
@@ -1458,6 +1468,38 @@ namespace SaasCopilot.Copilot.GUI.Features.Mcp
 		void NotifyStateChanged()
 		{
 			StateChanged?.Invoke(this, EventArgs.Empty);
+		}
+
+		void OnHubActionReceived(object? sender, McpHubActionEventArgs ev)
+		{
+			void Append()
+			{
+				var status = ev.Success ? "succeeded" : "failed";
+				AppendTranscript(
+					"hub",
+					ev.Success ? "Action completed" : "Action failed",
+					$"Tool '{ev.Tool}' \u2192 '{ev.Key}' {status}.");
+				NotifyStateChanged();
+			}
+
+			if (synchronizationContext is not null)
+				synchronizationContext.Post(_ => Append(), null);
+			else
+				Append();
+		}
+
+		async Task StartHubAsync(Uri mcpEndpoint)
+		{
+			try
+			{
+				var hubUri = new UriBuilder(mcpEndpoint) { Path = "/copilot-hub", Query = string.Empty }.Uri;
+				await hubConnection.StartAsync(hubUri);
+				logService.Log("hub", $"SignalR hub connected to '{hubUri}'.");
+			}
+			catch (Exception ex)
+			{
+				logService.Log("hub", $"SignalR hub connection failed: {ex.Message}");
+			}
 		}
 	}
 }

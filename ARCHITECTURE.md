@@ -14,14 +14,14 @@ This document covers the internal design of the SaasCopilot AI copilot subsystem
 │  │  SaasCopilot.Copilot.GUI                                 │  │
 │  │                                                          │  │
 │  │  Presentation ──► Application ──► Infrastructure         │  │
-│  │  (WinForms UI)    (Controller)    (HTTP / MCP / JSON)    │  │
+│  │  (WinForms UI)    (Controller)    (HTTP / MCP / SignalR) │  │
 │  │                        │                                 │  │
 │  │              Domain models & interfaces                  │  │
 │  └──────────────────────────────────────────────────────────┘  │
-│           │                              │                     │
-│           ▼                              ▼                     │
-│   LM Studio (localhost:1234)    SaasCopilot application        │
-│   OpenAI-compatible REST API    /mcp  (MCP server endpoint)    │
+│           │                    │              │                 │
+│           ▼                    ▼              ▼                 │
+│   LM Studio (localhost:1234)  /mcp      /copilot-hub           │
+│   OpenAI-compatible REST API  (tools)   (SignalR push)         │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -71,6 +71,7 @@ Domain/
   McpToolSource.cs             # BuiltIn | Remote
   McpTranscriptEntry.cs        # Single log entry (tag + message + timestamp)
   McpTrustEntry.cs             # Persisted tool-trust record
+  McpHubActionEventArgs.cs     # EventArgs for server-pushed ActionCompleted / ActionFailed
 Infrastructure/
   AssistantChatService.cs      # Calls LM Studio chat/completions, handles tool follow-up
   AssistantModelSelectionService.cs  # Discovers + persists the selected LLM
@@ -83,6 +84,8 @@ Infrastructure/
   McpDirectToolIntentParser.cs # Parses #toolName{...json...} syntax without an LLM call
   McpEndpointResolver.cs       # Derives /mcp URI from active app URI or override
   McpJsonFormatting.cs         # Shared JSON helpers
+  IMcpHubConnection.cs         # Start / Stop / ActionReceived interface for the hub client
+  McpHubConnection.cs          # SignalR HubConnectionBuilder implementation
   McpLogService.cs             # In-memory + transcript append service
   McpToolCatalog.cs            # Merges built-in + remote tools; pages through tools/list
   McpToolInvoker.cs            # Calls a tool (built-in or via MCP) and returns result text
@@ -139,6 +142,111 @@ https://<SaasCopilot-host>/mcp
 ```
 
 or overridden manually in settings. On connection the client sends `initialize` followed by `notifications/initialized`, then pages through `tools/list` to build the tool catalogue.
+
+### SignalR Hub Integration
+
+After a successful MCP connection, `McpSidecarController` also subscribes to the server's SignalR hub at `/copilot-hub` on the same host. The hub delivers real-time push events when server-side tool actions complete, without requiring the sidecar to poll.
+
+#### Connection lifecycle
+
+```
+ConnectAsync() succeeds
+  └─► StartHubAsync(ResolvedEndpoint)
+        └─► McpHubConnection.StartAsync(https://<host>/copilot-hub)
+              ├─ subscribes "ActionCompleted" → OnHubActionReceived
+              └─ subscribes "ActionFailed"    → OnHubActionReceived
+
+SetVisible(false)  OR  endpoint changes
+  └─► McpHubConnection.StopAsync()
+```
+
+#### Event flow
+
+```
+Server (CargoWise.Winzor.AppServer)
+  └─ IHubContext<CopilotHub>.SendAsync("ActionCompleted", McpHubActionEventArgs)
+       │  WebSocket push
+       ▼
+McpHubConnection.On<McpHubActionEventArgs>("ActionCompleted")
+  └─► ActionReceived event
+        └─► McpSidecarController.OnHubActionReceived
+              └─ posts to WinForms SynchronizationContext
+                   └─ AppendTranscript("hub", ...)  +  NotifyStateChanged()
+                        └─ transcript shows "Tool 'open_module' → 'AR' succeeded."
+```
+
+#### Key types
+
+| Type | Location | Role |
+|---|---|---|
+| `McpHubActionEventArgs` | `Domain/` | Event data: `Tool`, `Key`, `Success` |
+| `IMcpHubConnection` | `Infrastructure/` | `StartAsync` / `StopAsync` / `ActionReceived` event |
+| `McpHubConnection` | `Infrastructure/` | `HubConnectionBuilder` with `WithAutomaticReconnect()` |
+
+The hub subscription is **additive and non-blocking**: failure to connect to `/copilot-hub` is logged as a transcript warning and does not affect MCP tool calling in any way.
+
+### How to Expose New MCP Tools from the Application Host
+
+The sidecar discovers tools automatically from whatever the `/mcp` server exposes. The steps below apply to any host that wants to register new tools the AI model can call.
+
+#### 1. Define the tool on the server (CargoWise / SaasCopilot AppServer)
+
+```csharp
+// Anywhere in your host assembly — the [McpServerTool] attribute registers it.
+[McpServerTool]
+[Description("Opens a named module in the current session.")]
+public async Task<string> OpenModule(
+    [Description("Stable module key returned by list_modules.")] string moduleKey,
+    CancellationToken ct)
+{
+    var result = await _moduleLaunchService.LaunchAsync(moduleKey, _hubContext, ct);
+    return JsonSerializer.Serialize(result);
+}
+```
+
+The `inputSchema` (a JSON Schema object) is generated automatically from the parameter types and `[Description]` attributes. The AI model reads it at session start via `tools/list` and uses it to reason about which arguments to supply.
+
+#### 2. Register the MCP server and map the endpoint
+
+```csharp
+// Program.cs / Startup.cs in the host
+builder.Services.AddMcpServer()
+    .WithTools<YourToolClass>();
+
+app.MapMcp("/mcp");          // sidecar connects here
+app.MapHub<CopilotHub>("/copilot-hub");  // hub push channel
+```
+
+#### 3. Push real-time feedback from the hub after dispatch
+
+After the tool's dispatcher action resolves, fire a hub push (fire-and-forget) so the transcript shows the outcome immediately:
+
+```csharp
+_ = hubContext.Clients.All.SendAsync(
+    "ActionCompleted",
+    new McpHubActionEventArgs { Tool = "open_module", Key = moduleKey, Success = true },
+    CancellationToken.None);
+```
+
+The sidecar's `OnHubActionReceived` will append a `"hub"` transcript entry automatically.
+
+#### 4. What the sidecar does with it
+
+No sidecar code changes are required when new tools are added to the server. The sidecar:
+
+1. Calls `tools/list` on `ConnectAsync` and adds every discovered tool to its catalogue.
+2. Sends the relevant `inputSchema` to the model as part of each prompt request.
+3. Parses the model's `tool_choice` / `tool_calls` response and calls `tools/call` via `McpConnectionManager`.
+4. Receives the tool result as a JSON string and feeds it back to the model for a final response.
+5. Appends any hub-pushed `ActionCompleted` / `ActionFailed` events to the transcript in real time.
+
+#### Naming conventions for tool parameters
+
+| Convention | Example | Why |
+|---|---|---|
+| Use `[Description]` on every parameter | `[Description("Stable module key.")]` | Populates `inputSchema.properties[x].description`; the model uses it to pick the right value |
+| Prefer `string` over `int` for identifier parameters | `string moduleKey` | Models hallucinate fewer errors on string parameters |
+| Return a JSON-serialised result object | `JsonSerializer.Serialize(result)` | Lets the model parse success/failure fields and decide whether to retry |
 
 ### Built-in Tools
 

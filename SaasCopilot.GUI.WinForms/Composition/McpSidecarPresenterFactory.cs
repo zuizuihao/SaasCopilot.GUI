@@ -16,6 +16,7 @@ namespace SaasCopilot.Copilot.GUI.Composition
 		readonly IMcpApprovalService approvalService;
 		readonly IMcpLogService logService;
 		readonly ILogger<McpSidecarController> logger;
+		readonly IMcpHubConnection hubConnection;
 
 		public McpSidecarPresenterFactory(
 			IMcpEndpointResolver endpointResolver,
@@ -27,7 +28,8 @@ namespace SaasCopilot.Copilot.GUI.Composition
 			IMcpToolInvoker toolInvoker,
 			IMcpApprovalService approvalService,
 			IMcpLogService logService,
-			ILogger<McpSidecarController> logger)
+			ILogger<McpSidecarController> logger,
+			IMcpHubConnection hubConnection)
 		{
 			ArgumentNullException.ThrowIfNull(endpointResolver);
 			ArgumentNullException.ThrowIfNull(configurationStore);
@@ -39,6 +41,7 @@ namespace SaasCopilot.Copilot.GUI.Composition
 			ArgumentNullException.ThrowIfNull(approvalService);
 			ArgumentNullException.ThrowIfNull(logService);
 			ArgumentNullException.ThrowIfNull(logger);
+			ArgumentNullException.ThrowIfNull(hubConnection);
 
 			this.endpointResolver = endpointResolver;
 			this.configurationStore = configurationStore;
@@ -50,6 +53,7 @@ namespace SaasCopilot.Copilot.GUI.Composition
 			this.approvalService = approvalService;
 			this.logService = logService;
 			this.logger = logger;
+			this.hubConnection = hubConnection;
 		}
 
 		public IMcpSidecarPresenter Create(Func<Uri?> activeApplicationUriProvider, string title)
@@ -68,7 +72,8 @@ namespace SaasCopilot.Copilot.GUI.Composition
 				approvalService,
 				logService,
 				logger,
-				activeApplicationUriProvider);
+				activeApplicationUriProvider,
+				hubConnection);
 
 			return new McpSidecarPresenter(controller, title);
 		}

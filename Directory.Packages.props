@@ -6,6 +6,7 @@
 
   <!-- Production packages -->
   <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.5" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.5" />
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.2.0" />
